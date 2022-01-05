@@ -29,39 +29,6 @@ interface NewsComment extends News {
   readonly level: number;
 }
 
-// type alias
-// type Store = {
-//   currentPage: number;
-//   feeds: NewsFeed[];
-// };
-
-// type News = {
-//   id: number;
-//   time_ago: string;
-//   title: string;
-//   url: string;
-//   user: string;
-//   content: string;
-// };
-
-// 인터섹션이라는 타입스크립트의 기능
-// 중복된 코드를 줄일 수 있음
-// 이렇게 타입 알리아스와 앰퍼샌드를 사용
-// type NewsFeed = News & {
-//   comments_count: number;
-//   points: number;
-//   read?: boolean;
-// };
-
-// type NewsDetail = News & {
-//   comments: NewsComment[];
-// };
-
-// type NewsComment = News & {
-//   comments: NewsComment[];
-//   level: number;
-// };
-
 const container: HTMLElement | null = document.getElementById("root");
 const ajax: XMLHttpRequest = new XMLHttpRequest();
 const NEWS_URL = "https://api.hnpwa.com/v0/news/1.json";
@@ -72,12 +39,79 @@ const store: Store = {
   feeds: [], // newsFeed의 객체 데이터도 타입
 };
 
-function getData<AjaxResponse>(url: string): AjaxResponse {
-  ajax.open("GET", url, false);
-  ajax.send();
+// class Api {
+//   url: string;
+//   ajax: XMLHttpRequest;
 
-  return JSON.parse(ajax.response);
+//   // 생성자에서 초기화
+//   constructor(url: string) {
+//     this.url = url;
+//     this.ajax = new XMLHttpRequest();
+//   }
+
+//   protected getRequest<AjaxResponse>(): AjaxResponse {
+//     this.ajax.open("GET", this.url, false);
+//     this.ajax.send();
+
+//     return JSON.parse(this.ajax.response);
+//   }
+// }
+
+// class NewsFeedApi extends Api {
+//   getData(): NewsFeed[] {
+//     return this.getRequest<NewsFeed[]>();
+//   }
+// }
+
+// class NewsDetailApi extends Api {
+//   getData(): NewsDetail {
+//     return this.getRequest<NewsDetail>();
+//   }
+// }
+
+// 믹스인 사용
+// baseClasses로 제공된 N개의 클래스들을 targetClass에 상속시킴
+function applyApiMixins(targetClass: any, baseClasses: any[]): void {
+  baseClasses.forEach((baseClass) => {
+    Object.getOwnPropertyNames(baseClass.prototype).forEach((name) => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        baseClass.prototype,
+        name
+      );
+      if (descriptor) {
+        Object.defineProperty(targetClass.prototype, name, descriptor);
+      }
+    });
+  });
 }
+
+class Api {
+  getRequest<AjaxResponse>(url: string): AjaxResponse {
+    const ajax = new XMLHttpRequest();
+    ajax.open("GET", url, false);
+    ajax.send();
+
+    return JSON.parse(ajax.response);
+  }
+}
+
+class NewsFeedApi {
+  getData(): NewsFeed[] {
+    return this.getRequest<NewsFeed[]>(NEWS_URL);
+  }
+}
+
+class NewsDetailApi {
+  getData(id: string): NewsDetail {
+    return this.getRequest<NewsDetail>(CONTENT_URL.replace("@id", id));
+  }
+}
+
+interface NewsFeedApi extends Api {}
+interface NewsDetailApi extends Api {}
+
+applyApiMixins(NewsFeedApi, [Api]);
+applyApiMixins(NewsDetailApi, [Api]);
 
 function makeFeeds(feeds: NewsFeed[]): NewsFeed[] {
   for (let i = 0; i < feeds.length; i++) {
@@ -98,6 +132,7 @@ function updateView(html: string): void {
 }
 
 function newsFeed(): void {
+  const api = new NewsFeedApi();
   let newsFeed: NewsFeed[] = store.feeds;
   const newsList = [];
   let template = `
@@ -127,7 +162,7 @@ function newsFeed(): void {
 
   if (newsFeed.length === 0) {
     // store의 feed는 뉴스피드 타입이다. 허나 getData는 현재 뉴스피드 타입 뿐만 아니라 뉴스컨텐츠 타입도 리턴한다. 따라서 makeFeeds 함수는 어떤 타입을 리턴할지 모른다. 그럼 이때마다 타입 가드를 만들어줘야하는데 만약 써야하는 API가 현재처럼 두 가지가 아니라 몇십 가지라면 다른 방법을 써야한다. 그것이 바로 제네릭이다. 제네릭은 입력이 N개의 유형일때 출력도 N개의 유형이다.
-    newsFeed = store.feeds = makeFeeds(getData<NewsFeed[]>(NEWS_URL));
+    newsFeed = store.feeds = makeFeeds(api.getData());
   }
 
   for (let i = (store.currentPage - 1) * 10; i < store.currentPage * 10; i++) {
@@ -171,7 +206,8 @@ function newsFeed(): void {
 
 function newsDetail(): void {
   const id = location.hash.substr(7);
-  const newsContent = getData<NewsDetail>(CONTENT_URL.replace("@id", id));
+  const api = new NewsDetailApi();
+  const newsContent = api.getData(id);
   let template = `
     <div class="bg-gray-600 min-h-screen pb-8">
       <div class="bg-white text-xl">
