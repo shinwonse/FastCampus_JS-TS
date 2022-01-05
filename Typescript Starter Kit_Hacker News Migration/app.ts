@@ -1,10 +1,28 @@
-const container = document.getElementById("root");
-const ajax = new XMLHttpRequest();
+// type alias
+type Store = {
+  currentPage: number;
+  feeds: NewsFeed[];
+};
+
+type NewsFeed = {
+  id: number;
+  comments_count: number;
+  url: string;
+  user: string;
+  time_ago: string;
+  points: number;
+  title: string;
+  read?: boolean;
+};
+
+const container: HTMLElement | null = document.getElementById("root");
+const ajax: XMLHttpRequest = new XMLHttpRequest();
 const NEWS_URL = "https://api.hnpwa.com/v0/news/1.json";
 const CONTENT_URL = "https://api.hnpwa.com/v0/item/@id.json";
-const store = {
+const store: Store = {
+  // 객체 형태의 타입 지정은 어떻게 할까 -> type alias 혹은 interface
   currentPage: 1,
-  feeds: [],
+  feeds: [], // newsFeed의 객체 데이터도 타입
 };
 
 function getData(url) {
@@ -16,14 +34,24 @@ function getData(url) {
 
 function makeFeeds(feeds) {
   for (let i = 0; i < feeds.length; i++) {
+    // i에 대해서 타입 지정을 안해준 것이 아니라 내부적으로 타입스크립트가 해주고 있다.
     feeds[i].read = false;
   }
 
   return feeds;
 }
 
+// container에는 HTMLElement나 null이 올 수 있는데 만약 container에 null이 들어가 있었다면 innerHTML이 있을 수 없다. 따라서 경우의 수를 나눠서 코드를 작성해주어야 한다.
+function updateView(html) {
+  if (container != null) {
+    container.innerHTML = html;
+  } else {
+    console.error("최상위 컨테이너가 존재하지 않아 UI를 진행할 수 없습니다.");
+  }
+}
+
 function newsFeed() {
-  let newsFeed = store.feeds;
+  let newsFeed: NewsFeed[] = store.feeds;
   const newsList = [];
   let template = `
     <div class="bg-gray-600 min-h-screen">
@@ -87,7 +115,7 @@ function newsFeed() {
   );
   template = template.replace("{{__next_page__}}", store.currentPage + 1);
 
-  container.innerHTML = template;
+  updateView(template);
 }
 
 function newsDetail() {
@@ -150,10 +178,8 @@ function newsDetail() {
 
     return commentString.join("");
   }
-
-  container.innerHTML = template.replace(
-    "{{__comments__}}",
-    makeComment(newsContent.comments)
+  updateView(
+    template.replace("{{__comments__}}", makeComment(newsContent.comments))
   );
 }
 

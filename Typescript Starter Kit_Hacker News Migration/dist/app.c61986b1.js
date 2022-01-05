@@ -117,14 +117,18 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"app.js":[function(require,module,exports) {
+})({"app.ts":[function(require,module,exports) {
+"use strict";
+
 var container = document.getElementById("root");
 var ajax = new XMLHttpRequest();
 var NEWS_URL = "https://api.hnpwa.com/v0/news/1.json";
 var CONTENT_URL = "https://api.hnpwa.com/v0/item/@id.json";
 var store = {
+  // 객체 형태의 타입 지정은 어떻게 할까 -> type alias 혹은 interface
   currentPage: 1,
-  feeds: []
+  feeds: [] // newsFeed의 객체 데이터도 타입
+
 };
 
 function getData(url) {
@@ -135,10 +139,20 @@ function getData(url) {
 
 function makeFeeds(feeds) {
   for (var i = 0; i < feeds.length; i++) {
+    // i에 대해서 타입 지정을 안해준 것이 아니라 내부적으로 타입스크립트가 해주고 있다.
     feeds[i].read = false;
   }
 
   return feeds;
+} // container에는 HTMLElement나 null이 올 수 있는데 만약 container에 null이 들어가 있었다면 innerHTML이 있을 수 없다. 따라서 경우의 수를 나눠서 코드를 작성해주어야 한다.
+
+
+function updateView(html) {
+  if (container != null) {
+    container.innerHTML = html;
+  } else {
+    console.error("최상위 컨테이너가 존재하지 않아 UI를 진행할 수 없습니다.");
+  }
 }
 
 function newsFeed() {
@@ -157,7 +171,7 @@ function newsFeed() {
   template = template.replace("{{__news_feed__}}", newsList.join(""));
   template = template.replace("{{__prev_page__}}", store.currentPage > 1 ? store.currentPage - 1 : 1);
   template = template.replace("{{__next_page__}}", store.currentPage + 1);
-  container.innerHTML = template;
+  updateView(template);
 }
 
 function newsDetail() {
@@ -172,22 +186,25 @@ function newsDetail() {
     }
   }
 
-  function makeComment(comments) {
-    var called = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+  function makeComment(comments, called) {
+    if (called === void 0) {
+      called = 0;
+    }
+
     var commentString = [];
 
-    for (var _i = 0; _i < comments.length; _i++) {
-      commentString.push("\n        <div style=\"padding-left: ".concat(called * 40, "px;\" class=\"mt-4\">\n          <div class=\"text-gray-400\">\n            <i class=\"fa fa-sort-up mr-2\"></i>\n            <strong>").concat(comments[_i].user, "</strong> ").concat(comments[_i].time_ago, "\n          </div>\n          <p class=\"text-gray-700\">").concat(comments[_i].content, "</p>\n        </div>      \n      "));
+    for (var i = 0; i < comments.length; i++) {
+      commentString.push("\n        <div style=\"padding-left: ".concat(called * 40, "px;\" class=\"mt-4\">\n          <div class=\"text-gray-400\">\n            <i class=\"fa fa-sort-up mr-2\"></i>\n            <strong>").concat(comments[i].user, "</strong> ").concat(comments[i].time_ago, "\n          </div>\n          <p class=\"text-gray-700\">").concat(comments[i].content, "</p>\n        </div>      \n      "));
 
-      if (comments[_i].comments.length > 0) {
-        commentString.push(makeComment(comments[_i].comments, called + 1));
+      if (comments[i].comments.length > 0) {
+        commentString.push(makeComment(comments[i].comments, called + 1));
       }
     }
 
     return commentString.join("");
   }
 
-  container.innerHTML = template.replace("{{__comments__}}", makeComment(newsContent.comments));
+  updateView(template.replace("{{__comments__}}", makeComment(newsContent.comments)));
 }
 
 function router() {
@@ -233,7 +250,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52148" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52221" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -409,5 +426,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../../../.nvm/versions/node/v14.18.1/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js","app.js"], null)
-//# sourceMappingURL=/app.c328ef1a.js.map
+},{}]},{},["../../../.nvm/versions/node/v14.18.1/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js","app.ts"], null)
+//# sourceMappingURL=/app.c61986b1.js.map
