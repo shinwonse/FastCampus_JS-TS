@@ -161,6 +161,7 @@ function newsFeed() {
   var template = "\n    <div class=\"bg-gray-600 min-h-screen\">\n      <div class=\"bg-white text-xl\">\n        <div class=\"mx-auto px-4\">\n          <div class=\"flex justify-between items-center py-6\">\n            <div class=\"flex justify-start\">\n              <h1 class=\"font-extrabold\">Hacker News</h1>\n            </div>\n            <div class=\"items-center justify-end\">\n              <a href=\"#/page/{{__prev_page__}}\" class=\"text-gray-500\">\n                Previous\n              </a>\n              <a href=\"#/page/{{__next_page__}}\" class=\"text-gray-500 ml-4\">\n                Next\n              </a>\n            </div>\n          </div> \n        </div>\n      </div>\n      <div class=\"p-4 text-2xl text-gray-700\">\n        {{__news_feed__}}        \n      </div>\n    </div>\n  ";
 
   if (newsFeed.length === 0) {
+    // store의 feed는 뉴스피드 타입이다. 허나 getData는 현재 뉴스피드 타입 뿐만 아니라 뉴스컨텐츠 타입도 리턴한다. 따라서 makeFeeds 함수는 어떤 타입을 리턴할지 모른다. 그럼 이때마다 타입 가드를 만들어줘야하는데 만약 써야하는 API가 현재처럼 두 가지가 아니라 몇십 가지라면 다른 방법을 써야한다. 그것이 바로 제네릭이다. 제네릭은 입력이 N개의 유형일때 출력도 N개의 유형이다.
     newsFeed = store.feeds = makeFeeds(getData(NEWS_URL));
   }
 
@@ -169,8 +170,8 @@ function newsFeed() {
   }
 
   template = template.replace("{{__news_feed__}}", newsList.join(""));
-  template = template.replace("{{__prev_page__}}", store.currentPage > 1 ? store.currentPage - 1 : 1);
-  template = template.replace("{{__next_page__}}", store.currentPage + 1);
+  template = template.replace("{{__prev_page__}}", String(store.currentPage > 1 ? store.currentPage - 1 : 1));
+  template = template.replace("{{__next_page__}}", String(store.currentPage + 1));
   updateView(template);
 }
 
@@ -186,25 +187,22 @@ function newsDetail() {
     }
   }
 
-  function makeComment(comments, called) {
-    if (called === void 0) {
-      called = 0;
+  updateView(template.replace("{{__comments__}}", makeComment(newsContent.comments)));
+}
+
+function makeComment(comments) {
+  var commentString = [];
+
+  for (var i = 0; i < comments.length; i++) {
+    var comment = comments[i];
+    commentString.push("\n      <div style=\"padding-left: ".concat(comment.level * 40, "px;\" class=\"mt-4\">\n        <div class=\"text-gray-400\">\n          <i class=\"fa fa-sort-up mr-2\"></i>\n          <strong>").concat(comment.user, "</strong> ").concat(comment.time_ago, "\n        </div>\n        <p class=\"text-gray-700\">").concat(comment.content, "</p>\n      </div>      \n    "));
+
+    if (comment.comments.length > 0) {
+      commentString.push(makeComment(comment.comments));
     }
-
-    var commentString = [];
-
-    for (var i = 0; i < comments.length; i++) {
-      commentString.push("\n        <div style=\"padding-left: ".concat(called * 40, "px;\" class=\"mt-4\">\n          <div class=\"text-gray-400\">\n            <i class=\"fa fa-sort-up mr-2\"></i>\n            <strong>").concat(comments[i].user, "</strong> ").concat(comments[i].time_ago, "\n          </div>\n          <p class=\"text-gray-700\">").concat(comments[i].content, "</p>\n        </div>      \n      "));
-
-      if (comments[i].comments.length > 0) {
-        commentString.push(makeComment(comments[i].comments, called + 1));
-      }
-    }
-
-    return commentString.join("");
   }
 
-  updateView(template.replace("{{__comments__}}", makeComment(newsContent.comments)));
+  return commentString.join("");
 }
 
 function router() {
@@ -250,7 +248,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52221" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52814" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
